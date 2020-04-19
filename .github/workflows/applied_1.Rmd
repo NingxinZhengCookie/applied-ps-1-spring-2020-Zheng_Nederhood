@@ -1,0 +1,297 @@
+---
+title: "applied1"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tibble)
+library(tidyverse)
+```
+
+
+## 2.1 input database
+```{r}
+library(readxl)
+jan <- read_excel("~/Desktop/jan.xlsx")
+feb <- read_excel("~/Desktop/feb.xlsx")
+mar <- read_excel("~/Desktop/mar.xlsx")
+apr <- read_excel("~/Desktop/apr.xlsx")
+may <- read_excel("~/Desktop/may.xlsx")
+jun <- read_excel("~/Desktop/jun.xlsx")
+jul <- read_excel("~/Desktop/jul.xlsx")
+aug <- read_excel("~/Desktop/aug.xlsx")
+sep <- read_excel("~/Desktop/sep.xlsx")
+oct <- read_excel("~/Desktop/oct.xlsx")
+nov <- read_excel("~/Desktop/nov.xlsx")
+dec <- read_excel("~/Desktop/dec.xlsx")
+
+il_flights<- rbind(jan,feb,mar,apr,may,jun,jul,aug,sep,oct,nov,dec)
+View(il_flights)
+```
+## 2.2 
+### 1
+tailnumber
+
+### 2.
+#### 1.
+```{r echo=TRUE}
+print(il_flights)
+head(il_flights)
+str(il_flights)
+glimpse(il_flights)
+view(il_flights)
+summary(il_flights)
+```
+
+I prefer view, head and summary.
+
+#### 2.
+
+view:
+I can see all the data,so when I first get a dataset, I will use view to get familiar with it after inputting it.
+
+head:
+When I are working with data and then forget something, I will use head to see the first few lines to remind myself.
+
+summary：
+summary gives me many useful statistical information about dataset.
+
+## 2.3
+### 1.
+```{r echo=TRUE}
+install.packages("testthat")
+library(testthat)
+print(test_that("we have the right number of rows",expect_equal(nrow(il_flights),675822)))
+```
+
+### 2.
+```{r echo=TRUE}
+check_il <- il_flights %>%
+  filter(ORIGIN_STATE_NM != "Illinois" & DEST_STATE_NM != "Illinois")
+
+head(check_il)
+```
+
+### 3.
+```{r}
+drop_mo <-il_flights %>%
+  filter(ORIGIN!="MDW"& ORIGIN!="ORD" & DEST!="MDW" & DEST!="ORD")
+nrow(drop_mo)
+
+```
+
+### 4.
+```{r echo=TRUE}
+rank_or <- drop_mo %>%
+  group_by(ORIGIN) %>%
+  tally() %>%
+  arrange(desc(n))
+head(rank_or)
+
+rank_de <- drop_mo %>%
+  group_by(DEST) %>%
+  tally() %>%
+  arrange(desc(n))
+head(rank_de)
+
+view(drop_mo)
+```
+The five most common origins are ATL, PIA, MLI, BMI and DTW.
+the five most common destinations are ATL, PIA, MLI, BMI and DTW.
+These cities are Atlanda, Peoria, Moline, Bloomington and Detroit.
+Peoria, Moline and Bloomington are inside Illinois.
+Atlanda and Detroit are outside Illinois.
+Because they are ????
+
+### 5.
+```{r echo=TRUE}
+mo <-il_flights %>%
+  filter(ORIGIN=="MDW" | ORIGIN =="ORD"| DEST=="MDW" | DEST=="ORD")
+nrow(mo)
+```
+
+O'Hare: 903,747 (from: https://thepointsguy.com/guide/chicago-ohare-vs-midway-which-airport-should-i-fly-into/)
+or 867635 (from: https://www.flychicago.com/business/CDA/factsfigures/Pages/airtraffic.aspx)
+
+Midway: 253,046 (from: https://www.flychicago.com/business/CDA/factsfigures/Pages/airtraffic.aspx)
+or 171,185 (from: https://en.wikipedia.org/wiki/Midway_International_Airport#Airlines_and_destinations)
+
+These sources disagree with BTS dataset and with each other. 
+I think the reason why these number from websites and BTS  is that they have different method and standard to count flight. For example, one may take these cancelled flights into account while others may not.
+
+### 6.
+```{r echo=TRUE}
+mo_oh <-mo %>%
+  filter(ORIGIN=="ORD" | DEST=="ORD")
+
+rank_oh_airline <- mo_oh%>%
+  group_by(OP_UNIQUE_CARRIER) %>%
+  tally() %>%
+  arrange(desc(n))
+head(rank_oh_airline)
+
+mo_mw <-mo %>%
+  filter(ORIGIN=="MDW" | DEST=="MDW")
+
+rank_mw_airline <- mo_mw%>%
+  group_by(OP_UNIQUE_CARRIER) %>%
+  tally() %>%
+  arrange(desc(n))
+head(rank_mw_airline)
+
+```
+
+
+The 3 highest-volume airlines leaving or arriving at O'Hare are United Airlines, American Airlines and SkyWest Airlines.
+The 3 highest-volume airlines leaving or arriving at Midway are Southwest Airlines, Delta and Volaris.
+
+The top 3 airlines searched from websites are different with those from BTS. The reason may be ???
+
+## 3.
+### 1.
+```{r echo=TRUE}
+flightto_chicago <- mo %>%
+  filter(DEST== "MDW"|DEST== "ORD")
+
+
+flight_delay <- flightto_chicago %>%
+  drop_na() %>%
+  mutate(ontime=if_else(ARR_DELAY<=0,1,0)) %>%
+  group_by(MONTH) %>%
+  summarise(avg_arr_delay=mean(ARR_DELAY,na.rm=TRUE), online80=10*mean(ontime, na.rm=TRUE)) %>%
+  arrange(avg_arr_delay)
+
+view(flight_delay)
+
+ggplot(data=flight_delay)+
+  geom_col(aes(x=MONTH, y=avg_arr_delay)) +
+  geom_line(aes(x=MONTH, y=online80), color="blue") +
+  geom_line(aes(x=MONTH, y=8), color="red")+
+  scale_x_continuous(breaks = c(1,2,3,4,5,6,7,8,9,10,11,12))
+
+ 
+```
+November has the lowest average arrival delays. There is no month that at least 80% of flights on-time.
+
+### 2.
+```{r echo=TRUE}
+flight_common <- flightto_chicago%>%
+  group_by(MONTH)%>%
+  summarise(numbers=sum(FLIGHTS))
+view(flight_common)
+
+ggplot(data = flight_common)+
+  geom_col(aes(x=MONTH, y=numbers))+
+  scale_x_continuous(breaks = c(1,2,3,4,5,6,7,8,9,10,11,12))
+
+```
+July is the month when flights to Chicago are most common.
+
+### 3.
+```{r echo=TRUE}
+flight_rec <- flightto_chicago%>%
+  drop_na() %>%
+  mutate(ontime=if_else(ARR_DELAY<=0,1,0)) %>%
+  group_by(MONTH) %>%
+  summarise(avg_arr_delay=mean(ARR_DELAY,na.rm=TRUE), online80=20000*mean(ontime, na.rm=TRUE),numbers=sum(FLIGHTS)) %>%
+  mutate(ARR_DELAY_Pt=if_else(avg_arr_delay>0,"Y","N"))
+  
+# basic
+ggplot(data = flight_rec)+
+  geom_col(aes(x=MONTH, y=numbers))+
+  geom_line(aes(x=MONTH, y=online80), color="red")+
+  scale_x_continuous(breaks = c(1,2,3,4,5,6,7,8,9,10,11,12))
+
+#sophisticated
+ggplot(data = flight_rec, aes(x=numbers, y=online80))+
+  geom_point(aes(color=as.character(MONTH),shape=ARR_DELAY_Pt))
+  
+
+```
+
+According to plots, I recommend they have the convention in October . Because in October, there are both relatively high numbers of flights and high on-time rate, with negative average arrival delay.
+
+The sub-messages in the "sophesticated" plot is that it shows not only whether average arrival delay is positive but also the comparision bewtween months.
+
+I will recommend the "sophesticated" plot since it emphasizes the comparasion between months and it also provide more information.
+
+## 3.2
+```{r echo=TRUE}
+flight_airline <-flightto_chicago %>%
+  ungroup() %>%
+  filter(MONTH==10) %>%
+   drop_na() %>%
+  mutate(ontime=if_else(ARR_DELAY<=0,1,0)) %>%
+  group_by(OP_UNIQUE_CARRIER) %>%
+  summarise(avg_arr_delay=mean(ARR_DELAY,na.rm=TRUE), online80=10000*mean(ontime, na.rm=TRUE),numbers=sum(FLIGHTS)) %>%
+  mutate(ARR_DELAY_Pt=if_else(avg_arr_delay>0,"Y","N"))
+
+view(flight_airline)
+
+# basic
+ggplot(data = flight_airline)+
+  geom_col(aes(x=OP_UNIQUE_CARRIER, y=online80))
+
+#sophisticated
+ggplot(data = flight_airline, aes(x=numbers, y=online80))+
+  geom_point(aes(color=OP_UNIQUE_CARRIER,shape=ARR_DELAY_Pt))
+```
+
+I will recommend WN airline. Because in October, WN airline has both relatively high numbers of flights and high on-time rate, with negative average arrival delay.
+
+And I still prefer "sophesticated" plot because it is more informative. 
+
+## 3.3
+```{r echo=TRUE}
+flight_airline_Gre <- flightto_chicago%>%
+  drop_na() %>%
+  filter(ORIGIN_CITY_NAME==("Greer, SC")) %>%
+  mutate(ontime=if_else(ARR_DELAY<=0,1,0)) %>%
+  group_by(MONTH) %>%
+  summarise(avg_arr_delay=mean(ARR_DELAY,na.rm=TRUE), online80=100*mean(ontime, na.rm=TRUE),numbers=sum(FLIGHTS)) %>%
+  mutate(ARR_DELAY_Pt=if_else(avg_arr_delay>0,"Y","N"))
+  
+# basic
+ggplot(data = flight_airline_Gre)+
+  geom_col(aes(x=MONTH, y=numbers))+
+  geom_line(aes(x=MONTH, y=online80), color="red")+
+  scale_x_continuous(breaks = c(1,2,3,4,5,6,7,8,9,10,11,12))
+
+#sophisticated
+ggplot(data = flight_airline_Gre, aes(x=numbers, y=online80))+
+  geom_point(aes(color=as.character(MONTH),shape=ARR_DELAY_Pt))
+```
+
+Yes, I will change my recommendation to February. Because now we have update our dataset to focus on those with originating from Greer, where some of our most members come from. And in February, there are both relatively high numbers of flights from Greer and high on-time rate, with negative average arrival delay.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
